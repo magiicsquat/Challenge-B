@@ -24,6 +24,7 @@ library(np)
 library(stringr)
 library(data.table)
 ```
+link GIT: https://github.com/clementrx/Challenge-B/tree/1a115f51967056794f0415ec1dfc35aa86b07d00
 
 #Task 1B - Predicting house prices in Ames, Iowa (continued)
 
@@ -75,8 +76,10 @@ Then we use both models to predicts selling prices (that we do not know) of obse
 ```{r Step 3 : Prediction, lm vs randomForest}
 lm_model_2 <- lm(SalePrice ~ MSZoning + LotArea + Neighborhood  + YearBuilt + OverallQual,
                  data = train)
+                 
 # Problem of "levels" in the predictions
 # We solve it with this:
+
 common <- intersect(names(train), names(test)) 
 for (p in common) { 
   if (class(train[[p]]) == "factor") { 
