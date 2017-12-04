@@ -75,7 +75,8 @@ Then we use both models to predicts selling prices (that we do not know) of obse
 ```{r Step 3 : Prediction, lm vs randomForest}
 lm_model_2 <- lm(SalePrice ~ MSZoning + LotArea + Neighborhood  + YearBuilt + OverallQual,
                  data = train)
-
+# Problem of "levels" in the predictions
+# We solve it with this:
 common <- intersect(names(train), names(test)) 
 for (p in common) { 
   if (class(train[[p]]) == "factor") { 
