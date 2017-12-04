@@ -1,0 +1,271 @@
+---
+title: "Untitled"
+author: "Clément Rieux & Bruno Pilarczyk"
+date: "04/12/2017"
+output: pdf_document
+---
+
+```{r echo=FALSE,warning=FALSE}
+ library(knitr)
+  opts_chunk$set(fig.align='center',
+                 external=TRUE,
+                 echo=TRUE,
+                 fig.pos='!ht'
+                )
+```
+
+```{r, include = FALSE}
+
+library(caret)
+library(tidyverse)
+library(randomForest)
+library(ggplot2)
+library(np)
+library(stringr)
+library(data.table)
+```
+
+#Task 1B - Predicting house prices in Ames, Iowa (continued)
+
+##Step 1 
+
+We choose random forests as a machine learning technique. This process works better with large datasets. The first main parameter is the number of decision trees, in fact it selects ramdom samples of a dataset. The other parameter is the number of variables for each node, which is necessarily lower than the total number of inputs in the original dataset. For a classification problem each tree will give an outcome, it will give the class of an object. Let's say we choose the dataset "iris" which is available on R, the aim is to predict the specie of flower with some inputs (the sepal length, petal width etc.), `randomForest()` will ramdomly select subsets of the dataset "iris", then for each decision tree, the process will give the outcome (here the specie) after studying which decision to make at each node.At the end of each tree there is the result, the number of tree with the most common votes are selected, and the final prediction is their outcome.
+
+##Step 2
+
+First we import both datasets : `train.csv` and `test.csv`. Then we remove all the missing data, the NAs are removed in such a way described in Challenge A : we remove the inputs with more than 100 missing observations, then with the remaining variables we remove only the missing observations.
+```{r Step 2 : Importing and cleaning datasets, include=FALSE}
+train <- read.csv(file="/Users/clementrieux/Desktop/master/Rprogramming/challengeB/train.csv")   #We import both datasets : "train.csv" and "test.csv"
+test <- read.csv(file="/Users/clementrieux/Desktop/master/Rprogramming/challengeB/test.csv")
+
+#Then we clean the dataset "train" from missing data.
+remove.vars <- train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 100) %>% select(feature) %>% unlist
+
+train <- train %>% select(- one_of(remove.vars))
+
+train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
+
+train <- train %>% filter(is.na(GarageType) == FALSE, is.na(MasVnrType) == FALSE, is.na(BsmtFinType2) == FALSE, is.na(BsmtExposure) == FALSE, is.na(Electrical) == FALSE)
+```
+
+Then we use the step function, based on minimization of the AIC, this technique will select the more important variables for our model. Then we execute the randomForest () function with the chosen variables (chosen by the `step()` function), we set the number of decision trees to 500 and we set the numbers of variables ramdomly sampled at each node to 21 (nearly the half of the number of inputs which is 43). You can see the code just below.
+
+
+```{r Step 2 : Random Forests}
+set.seed(5)
+RF <- randomForest(SalePrice ~ MSSubClass + MSZoning + 
+               LotArea + Street + LandContour + Utilities + LotConfig + 
+               LandSlope + Neighborhood + Condition1 + Condition2 + OverallQual + 
+               OverallCond + YearBuilt + YearRemodAdd + RoofStyle + RoofMatl + 
+               Exterior1st + MasVnrType + MasVnrArea + ExterQual + BsmtQual + 
+               BsmtExposure + BsmtFinSF1 + BsmtFinSF2 + BsmtUnfSF + X1stFlrSF + 
+               X2ndFlrSF + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + 
+               Functional + Fireplaces + GarageCars + GarageArea + GarageQual + 
+               GarageCond + WoodDeckSF + ScreenPorch + PoolArea + MoSold + 
+               SaleType, data = train ,  ntree = 500, 
+             mtry = 21, na.action = na.roughfix)           
+```
+
+##Step 3
+
+For this step we are asked to compare the effectiveness of both models, the randomForest model we have just created, and a linear model. We will use the model described in Challenge A, it was called "Model 2".
+
+Then we use both models to predicts selling prices (that we do not know) of observations in the data `test.csv`, given all the information on inputs we know in this dataset, we show below the head of the data frame we create, with for each Id the selling price predicted by the randomForest technique and the selling price predicted by the regression linear model.
+
+```{r Step 3 : Prediction, lm vs randomForest}
+lm_model_2 <- lm(SalePrice ~ MSZoning + LotArea + Neighborhood  + YearBuilt + OverallQual,
+                 data = train)
+
+common <- intersect(names(train), names(test)) 
+for (p in common) { 
+  if (class(train[[p]]) == "factor") { 
+    levels(test[[p]]) <- levels(train[[p]]) 
+  } 
+}
+
+prediction <- data.frame(Id = test$Id, SalePrice_ML = predict(RF,test,type="response"),
+                         SalePrice_LM = predict(lm_model_2, test, type="response"))
+head(prediction, 10)
+```
+
+To compare the effectiveness of both models, we compare the explained variance (the $R^2$)
+
+```{r Step 3 : Comparison, lm vs randomForest}
+R2_ML <- (RF$rsq)[500] 
+R2_ML       #explained variance : 85.16239 %
+R2_LM <- summary(lm_model_2)$r.squared
+R2_LM       #explained variance : 72.52959 %
+max(R2_ML, R2_LM)   # The randomForest explained variance (R2_ML) is the highest.
+```
+
+As shown above, model (RF) is more predictive as `R2_ML` is higher than `R2_LM`.
+
+\newpage
+
+#Task 2B - Overfitting in Machine Learning (continued)
+
+Model (T) :
+
+\begin{center}
+$y=x^3+\epsilon$
+\end{center}
+
+With : 
+\begin{center}
+
+
+$\left\{
+\begin{array}{rl}
+x \sim N(0,1)\\
+
+\epsilon \sim N(0,1)\\
+\end{array}
+\right.$
+\end{center}
+
+## Step 1
+
+First we create the same data as in Challenge A with 150 observations.
+```{r Step 1 : training and testing data, include=FALSE}
+set.seed(1)
+Nsim <- 150
+b <- c(0,1)
+x0 <- rep(1, Nsim)
+x1 <- rnorm(n = Nsim)    
+
+X <- cbind(x0, x1^3)
+y.true <- X %*% b  
+
+eps <- rnorm(n = Nsim)
+y <- X %*% b + eps
+
+df <- tbl_df(y[,1]) %>% rename(y = value) %>% bind_cols(tbl_df(x1)) %>% rename(x = value) %>% bind_cols(tbl_df(y.true[,1])) %>% rename(y.true = value)
+
+
+# Split sample into training and testing, 80/20
+training.index <- createDataPartition(y = y, times = 1, p = 0.8)
+df <- df %>% mutate(which.data = ifelse(1:n() %in% training.index$Resample1, "training", "testing"))
+
+training <- df %>% filter(which.data == "training")
+testing <- df %>% filter(which.data == "testing")
+```
+
+Then we regress y on x using a low-flexibility local linear model ("low" because we set the bandwidth to 0.5). You can find its main statistics just below.
+```{r Step 1 : low flexibility local-linear model, echo=FALSE}
+ll.fit.lowflex <- npreg(y ~ x, data = training, method = "ll", bws = 0.5)
+summary(ll.fit.lowflex)
+```
+
+## Step 2
+
+Now we estimate a high-flexibility local linear model on the training data.
+
+```{r Step 2 : high flexibility local-linear model, echo=FALSE}
+ll.fit.highflex <- npreg(y ~ x, data = training, method = "ll", bws = 0.01)
+summary(ll.fit.highflex)
+```
+We can notice that the variance explained is higher in the high-flexbility local linear model : 0.95 > 0.85
+
+##Step 3 
+
+In this graph we represent the input $x$ and the outcome $y$ from the training data, the red line represents the predicted values from the low-flexibility local linear model, the blue one represents the predicted values from the high-flexbility local linear model.
+
+```{r Step 3 : Prediction on training data, echo=FALSE, fig.cap = "Predictions of ll.fit.lowflex and ll.fit.highflex on training data."}
+
+training <- training %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = training),
+y.ll.highflex = predict(object = ll.fit.highflex, newdata = training))
+
+ggplot(training) + geom_point(mapping = aes(x = x, y = y)) + 
+  geom_line(mapping = aes(x = x, y = y.true)) + 
+  geom_line(mapping = aes(x = x, y = y.ll.lowflex), color = "red") + 
+  geom_line(mapping = aes(x = x, y = y.ll.highflex), color = "blue")
+
+
+```
+
+## Step 4
+
+According to the figure just above, the high-flexibility model seems to be more precise because it is justly more flexible.
+
+
+## Step 5
+In this graph we represent the input $x$ and the outcome $y$ from the test data, the red line represents the predicted values from the low-flexibility local linear model, the blue one represents the predicted values from the high-flexbility local linear model.
+
+```{r Step 5 : Prediction on testing data, echo=FALSE, fig.cap = "Predictions of ll.fit.lowflex and ll.fit.highflex on testing data."}
+
+testing <- testing %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = testing),
+y.ll.highflex = predict(object = ll.fit.highflex, newdata = testing))
+
+ggplot(testing) + geom_point(mapping = aes(x = x, y = y)) + 
+  geom_line(mapping = aes(x = x, y = y.true)) + 
+  geom_line(mapping = aes(x = x, y = y.ll.lowflex), color = "red") + 
+  geom_line(mapping = aes(x = x, y = y.ll.highflex), color = "blue")
+```
+
+With a lower number of observations, low-flexibility model seems to be more effective than the high flexibility model.
+
+## Step 6
+
+We create a vector $bw$ starting from 0.01 to 0.5, the gap is about 0.001 between each elements.
+
+$bw = ( 0.010 ~~ 0.011 ~~ 0.012 ~ \dots ~ 0.499 ~~ 0.500 )'$
+
+```{r Step 6 : vector of bandwidth, include=FALSE}
+bw <- seq(0.01, 0.5, 0.001)
+```
+
+## Step 7 :
+
+We use the $bw$ recently created, for each bandwith between 0.01 and 0.5, we created a model with its specific bandwidth. So we create 491 different models.
+```{r Step 7 : flexibility model for each bandwidth between 0.01 and 0.5, include=FALSE}
+llbw.fit <- lapply(X = bw, FUN = function(bw) {npreg(y ~ x, data = training, 
+method = "ll", bws = bw)})
+```
+
+## Step 8 :
+
+In this step we compute the Mean Squared Error for each model using `training` data.
+
+```{r Step 8 : MSE training, include=FALSE}
+mse.training <- function(fit.model){
+  predictions <- predict(object = fit.model, newdata = training)
+  training %>% mutate(squared.error = (y - predictions)^2) %>% summarize(mse = mean(squared.error))
+}
+mse.train.results <- unlist(lapply(X = llbw.fit, FUN = mse.training))
+```
+
+## Step 9 :
+In this step we compute the Mean Squared Error for each model using `testing` data.
+
+```{r Step 9 : MSE testing, include= FALSE}
+mse.test <- function(fit.model){
+  predictions <- predict(object = fit.model, newdata = testing)
+  testing %>% mutate(squared.error = (y - predictions)^2) %>% summarize(mse = mean(squared.error))
+}
+mse.test.results <- unlist(lapply(X = llbw.fit, FUN = mse.test))
+```
+
+## Step 10 :
+
+Now we plot on the same graph the MSE for both datasets `training` and `testing`.
+
+The main difference is that the MSE is not the same because of the number of observations. For large datasets which is the case for `training`, a high-flexibility local linear model with the lowest bandwidth is much more effective than a low-flexibility local linear model with a higher bandwidth.
+
+For smaller samples, it's not exactly the opposite. A high-flexibility local linear model with bandwith near from 0 is not efficient, but a low-flexibility local linear with bandwith set to 0.5 is not very effective either. So with \textbf{\textsf{R}} we find the minimum value of the MSE with `testing` data, and for which bandwidth this value is reached. The MSE for the data `testing` is minimized for a bandwidth set to 0.231, at this point the MSE reached its minimum value at 0.8928.
+
+```{r Step 10 : Plot the MSE on training and testing data, echo=FALSE, fig.cap="MSE on training and testing data for different bandwidth - local linear regression" }
+mse.df <- tbl_df(data.frame(bandwidth = bw, mse.train = mse.train.results, mse.test = mse.test.results))
+
+ggplot(mse.df) + 
+  geom_line(mapping = aes(x = bandwidth, y = mse.train), color = "blue") +
+  geom_line(mapping = aes(x = bandwidth, y = mse.test), color = "orange")
+
+```
+
+
+```{r Step 10 : Minimum MSE (testing data), echo=FALSE}
+min_MSE_testing <- data.frame(unlist((mse.df[which.min(mse.df$mse.test),])[,-2]))
+colnames(min_MSE_testing) <- "Minimum Point"
+min_MSE_testing
+```
+
