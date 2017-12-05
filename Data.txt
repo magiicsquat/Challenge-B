@@ -1,14 +1,18 @@
 Data: 
 
+Task1:
 On GitHub  you have the data for the task 1B ("test.csv" and "train.csv")
 
-But no for the Task 3B (One of them is to huge to be on GitHub):
 
+Task 2: no data 
+
+task 3:
 CNIL.csv is already on GitHub (you can find it here : https://www.data.gouv.fr/fr/datasets/correspondants-informatique-et-libertes-cil/
 
-And you need this one:
+The other data is to huge to be on GitHub, you need to download it:
 
 Call it "SIREN.csv" before run the code :http://files.data.gouv.fr/sirene/sirene_201710_L_M.zip
 
 
 Moreover we don't use "SIREN.csv" on the RMardkwon to spend less time to  compile, so find "DataStep3.csv" for the step3.
+"DataStep3.csv" is the dataset where the information from the SIREN dataset are merging into the CNIL data.
