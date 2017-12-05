@@ -33,13 +33,13 @@ library(data.table)
 
 GitHub link : https://github.com/clementrx/Challenge-B
 
-#Task 1B - Predicting house prices in Ames, Iowa (continued)
+# Task 1B - Predicting house prices in Ames, Iowa (continued)
 
-##Step 1 
+## Step 1 
 
 We choose random forests as a machine learning technique. This process works better with large datasets. The first main parameter is the number of decision trees, in fact it selects ramdom samples of a dataset. The other parameter is the number of variables for each node, which is necessarily lower than the total number of inputs in the original dataset. For a classification problem each tree will give an outcome, it will give the class of an object. Let's say we choose the dataset "iris" which is available on R, the aim is to predict the specie of flower with some inputs (the sepal length, petal width etc.), `randomForest()` will ramdomly select subsets of the dataset "iris", then for each decision tree, the process will give the outcome (here the specie) after studying which decision to make at each node.At the end of each tree there is the result, the number of tree with the most common votes are selected, and the final prediction is their outcome.
 
-##Step 2
+## Step 2
 
 First we import both datasets : `train.csv` and `test.csv`. Then we remove all the missing data, the NAs are removed in such a way described in Challenge A : we remove the inputs with more than 100 missing observations, then with the remaining variables we remove only the missing observations.
 ```{r Step 2 : Importing and cleaning datasets, include=FALSE}
@@ -79,8 +79,9 @@ RF <- randomForest(SalePrice ~ MSSubClass + MSZoning +
                SaleType, data = train ,  ntree = 500, 
              mtry = 21, na.action = na.roughfix)           
 ```
+\newpage
 
-##Step 3
+## Step 3
 
 For this step we are asked to compare the effectiveness of both models, the randomForest model we have just created, and a linear model. We will use the model described in Challenge A, it was called "Model 2".
 
@@ -119,7 +120,7 @@ As shown above, model (RF) is more predictive as `R2_ML` is higher than `R2_LM`.
 
 \newpage
 
-#Task 2B - Overfitting in Machine Learning (continued)
+# Task 2B - Overfitting in Machine Learning (continued)
 
 Model (T) :
 
@@ -183,7 +184,7 @@ summary(ll.fit.highflex)
 ```
 We can notice that the variance explained is higher in the high-flexbility local linear model : 0.95 > 0.85
 
-##Step 3 
+## Step 3 
 
 In this graph we represent the input $x$ and the outcome $y$ from the training data, the red line represents the predicted values from the low-flexibility local linear model, the blue one represents the predicted values from the high-flexbility local linear model.
 
@@ -285,13 +286,15 @@ min_MSE_testing <- data.frame(unlist((mse.df[which.min(mse.df$mse.test),])[,-2])
 colnames(min_MSE_testing) <- "Minimum Point"
 min_MSE_testing
 ```
+\newpage
 
 # Task 3B - Privacy regulation compliance in France
+
+We use Sys.time to measure the time running of the step 3B, see at the end of this exercice the time needed.
 
 ## Step 1 
 First we import the data set `CNIL.csv`, this latter lists all the companies that nominated a CIL.
 
-We use Sys.time to measure the time running of the step 3B, see at the end of this exercice the time needed.
 
 ```{r time, include= FALSE}
 start_time <- Sys.time()
@@ -385,6 +388,7 @@ write.csv(DataCNILInfo2,file= "DataStep3.csv")
 
 We have exported the dataset in csv to optimize your and our time (you can find it on GitHub : "DataStep3.csv").
 
+\newpage
 
 ## Step 4 
 
