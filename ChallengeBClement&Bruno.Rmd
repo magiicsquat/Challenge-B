@@ -263,6 +263,8 @@ mse.test <- function(fit.model){
 mse.test.results <- unlist(lapply(X = llbw.fit, FUN = mse.test))
 ```
 
+\newpage
+
 ## Step 10 :
 
 Now we plot on the same graph the MSE for both datasets `training` and `testing`.
