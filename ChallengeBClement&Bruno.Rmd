@@ -1,7 +1,7 @@
 ---
-title: "Untitled"
-author: "Clément Rieux & Bruno Pilarczyk"
-date: "04/12/2017"
+title: "Challenge B"
+author: "Clément Rieux, Bruno Pilarczyk"
+date: "December 2, 2017"
 output: pdf_document
 ---
 
@@ -15,7 +15,13 @@ output: pdf_document
 ```
 
 ```{r, include = FALSE}
-
+#install.packages("caret", repos="http://cran.us.r-project.org")
+#install.packages("tidyverse", repos="http://cran.us.r-project.org")
+#install.packages("randomForest", repos="http://cran.us.r-project.org")
+#install.packages("ggplot2", repos="http://cran.us.r-project.org")
+#install.packages("np", repos="http://cran.us.r-project.org")
+#install.packages("stringr", repos="http://cran.us.r-project.org")
+#install.packages("data.table", repos="http://cran.us.r-project.org")
 library(caret)
 library(tidyverse)
 library(randomForest)
@@ -24,7 +30,8 @@ library(np)
 library(stringr)
 library(data.table)
 ```
-link GIT: https://github.com/clementrx/Challenge-B/tree/1a115f51967056794f0415ec1dfc35aa86b07d00
+
+GitHub link : https://github.com/clementrx/Challenge-B
 
 #Task 1B - Predicting house prices in Ames, Iowa (continued)
 
@@ -36,8 +43,8 @@ We choose random forests as a machine learning technique. This process works bet
 
 First we import both datasets : `train.csv` and `test.csv`. Then we remove all the missing data, the NAs are removed in such a way described in Challenge A : we remove the inputs with more than 100 missing observations, then with the remaining variables we remove only the missing observations.
 ```{r Step 2 : Importing and cleaning datasets, include=FALSE}
-train <- read.csv(file="/Users/clementrieux/Desktop/master/Rprogramming/challengeB/train.csv")   #We import both datasets : "train.csv" and "test.csv"
-test <- read.csv(file="/Users/clementrieux/Desktop/master/Rprogramming/challengeB/test.csv")
+train <- read.csv(file="train.csv")   #We import both datasets : "train.csv" and "test.csv"
+test <- read.csv(file="test.csv")
 
 #Then we clean the dataset "train" from missing data.
 remove.vars <- train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 100) %>% select(feature) %>% unlist
@@ -51,6 +58,12 @@ train <- train %>% filter(is.na(GarageType) == FALSE, is.na(MasVnrType) == FALSE
 
 Then we use the step function, based on minimization of the AIC, this technique will select the more important variables for our model. Then we execute the randomForest () function with the chosen variables (chosen by the `step()` function), we set the number of decision trees to 500 and we set the numbers of variables ramdomly sampled at each node to 21 (nearly the half of the number of inputs which is 43). You can see the code just below.
 
+```{r Step 2 : step function, include=FALSE, eval=FALSE}
+step(lm(train$SalePrice ~., data = train))  #First we select the best variables
+                                            #using the step() function, based on minimization
+                                            # of the AIC.
+
+```
 
 ```{r Step 2 : Random Forests}
 set.seed(5)
@@ -76,9 +89,9 @@ Then we use both models to predicts selling prices (that we do not know) of obse
 ```{r Step 3 : Prediction, lm vs randomForest}
 lm_model_2 <- lm(SalePrice ~ MSZoning + LotArea + Neighborhood  + YearBuilt + OverallQual,
                  data = train)
-                 
-# Problem of "levels" in the predictions
-# We solve it with this:
+
+# We have a problem of "levels" in randomForest pediction on test data
+# we solve it with this :
 
 common <- intersect(names(train), names(test)) 
 for (p in common) { 
@@ -271,5 +284,145 @@ ggplot(mse.df) +
 min_MSE_testing <- data.frame(unlist((mse.df[which.min(mse.df$mse.test),])[,-2]))
 colnames(min_MSE_testing) <- "Minimum Point"
 min_MSE_testing
+```
+
+# Task 3B - Privacy regulation compliance in France
+
+## Step 1 
+First we import the data set `CNIL.csv`, this latter lists all the companies that nominated a CIL.
+
+We use Sys.time to measure the time running of the step 3B, see at the end of this exercice the time needed.
+
+```{r time, include= FALSE}
+start_time <- Sys.time()
+```
+
+```{r Step 1 : Import the data, include=FALSE}
+CNILdata <- read.csv("CNIL.csv",sep = ';')
+
+```
+
+```{r View of the tabe}
+head(CNILdata)
+```
+
+## Step 2
+
+In the next page you will find a table which indicates how many CIl were numerated per department.
+
+```{r Step 2 : number of CIL per department, include=FALSE}
+system.time(Department <- data.frame(Departement = CNILdata$Code_Postal)) #We extract the postal
+#code column
+
+Department$Departement <- str_sub(Department$Departement, 1,2) #Then we only keep the first 2 digits which indicated the number of the department
+
+system.time(Q3.2 <- as.data.frame(table(Department))) #The table() function gives the number of organizations which nomanited a CIL. (the frequency)
+```
+
+```{r Step 2 : Correction for no informations about department, include =FALSE}
+colnames(Q3.2) <- c("Department","Number of organizations") 
+NoInfo <- as.data.frame(Q3.2[1,] + Q3.2[2,] + Q3.2[100,] + Q3.2[101,] + Q3.2[102,]+ Q3.2[103,] + 
+Q3.2[104,]+ Q3.2[105,]+ Q3.2[106,]+ Q3.2[107,]+ Q3.2[108,]+ Q3.2[109,])
+Q3.2 <- Q3.2[-c(1,2,100,101,102,103,104,105,106,107,108,109),]
+Q3.2 <- rbind(Q3.2, NoInfo)
+```
+
+```{r Step 2 : 2 tables in 1, include=FALSE}
+Q3.2 <- tbl_df(Q3.2)
+q1 <- print(Q3.2)[1:50,]
+q3 <- print(Q3.2)[51:98,]
+```
+
+Here is the first 50 departments
+```{r Step 2 : the first 50 departments, echo= FALSE}
+knitr::kable(list(q1, q3))
+```
+
+\newpage
+
+
+## Step 3
+
+First we import the dataset called `SIREN.csv`. We only keep the first 10 characters of the variable "date" : year, month and day. Then we classify the data in this way : the more recent to the oldest. Next we take off the duplicates, because we classified the data by the more recent information by company, we can erase all the duplicates that come next. Finally we merge the datasets by SIREN number and now we have all the informations about only the companies which nominated a CIL.
+
+Here we don't run the code using eval = FALSE to win time but you can change it in our Rmd if you want 
+to run it.
+
+```{r Step 3 : Import the dataset SIREN, eval=FALSE}
+system.time(SIRENdata <- fread("SIREN.csv", sep = ';', header = TRUE))
+
+# (Nearly 13 minutes needed to run this step).
+```
+
+```{r Step 3, eval=FALSE}
+
+# We take the most up to date information about each company: 
+
+SIRENdata$DATEMAJ <- str_sub(SIRENdata$DATEMAJ, 1,10)
+#we only keep the first 10 characters of the variable "date" : year, month and day
+
+system.time(SIRENdata <- SIRENdata[ order(SIRENdata$DATEMAJ , decreasing = TRUE ),])
+#We classify the data in this way : the more recent to the oldest
+
+SIRENdata <- subset(SIRENdata, !duplicated(SIRENdata[,1]))
+#We take off the duplicates, because we classified by the more recent information by company
+# first, we can erase the oldest one.
+
+sum(duplicated(SIRENdata))
+#Now we check that there is no more duplicate.
+
+# We merge the code with this code but we don't run it because it's too long with the Rmardkown
+
+system.time(DataCNILInfo2<-merge(x=CNILdata,y=SIRENdata,by.x ="Siren",by.y = "SIREN",all.x=TRUE, sort = FALSE))
+write.csv(DataCNILInfo2,file= "DataStep3.csv")
+
+# by.x et by.y because the names of variables are differents in the two datasets
+#Next we merge the datasets by SIREN number and now we have all the informations about only
+#the companies which nominated a CIL.
+
+```
+
+
+We have exported the dataset in csv to optimize your and our time (you can find it on GitHub : "DataStep3.csv").
+
+
+## Step 4 
+
+To plot the histogram of the size of the companies that nominated a CIL, we take the size of companies from the dataset
+created in step3, And use table to obtain the frequence and then we can plot the histogram.
+
+
+```{r Step 4 : Parameters}
+
+DataCNILInfo2 <- fread("DataStep3.csv", sep = ",", header = TRUE)
+
+size <- data.frame(size = DataCNILInfo2$LIBTEFET)
+#First we collect the number of salaries by company, this is the size of the organization.
+
+#We create a data frame
+size <- as.data.frame(table(size))
+colnames(Q3.2) <- c("Size","Number of organisations")
+size$Freq <-  as.numeric(size$Freq)
+```
+
+```{r step 4: histograme, include = FALSE}
+sizecompany=c(154,1204,924,1647,1945,2668,2714,1142,1060,307,839,582,400,250,75,180)
+names(sizecompany)=c("Unités non\n employeuses","0","1 ou 2","3-5","6-9","10- 19","20-49","50-99","100-199","200-249","250-499","500-999","1000-1999","2000-4999","5000-9999","10 000 et plus")
+
+#We set the parameters of the histogram
+par(mar = c(6, 6, 3, 2.5), mgp = c(4, 1, 0))
+```
+
+```{r Step 4 : Histogram, echo=FALSE, fig.cap="Size of the companies that nominated a CIL"}
+barplot(sizecompany,las=2, col = "blue",xlab="\n Size of the companies",cex.names = 0.8,ylab="Number of companies",ylim=c(0,3000))
+```
+
+We can see in this histogram that most of the companies that nominated a CIL have between 10 and 49 salaries. After this size, the number of companies is decreasing in the size of the company.
+
+
+```{r  time to run the step3, echo=FALSE}
+end_time <- Sys.time()
+print("time to Knit the step3 on Rmd = ")
+end_time - start_time
 ```
 
